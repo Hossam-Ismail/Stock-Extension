@@ -1,6 +1,6 @@
 {
     "manifest_version": 3,
-    "name": "Sample Extension",
+    "name": "Stockly",
     "version": "1.0",
     "description": "A sample Chrome extension for testing.",
     "action": {

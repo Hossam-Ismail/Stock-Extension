@@ -1,0 +1,55 @@
+/* Reset default margins and paddings for the entire page */
+html, body {
+  padding: 0px;
+  margin:0px;
+  border-radius:8px;
+  box-sizing: border-box; /* Ensure consistent box model */
+  background-color: transparent;
+}
+#popup {
+    width: 250px;
+    margin:1px;
+    
+    font-family: Arial, sans-serif;
+    border: 2px solid #ccc;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    
+  }
+  
+  #header {
+    background-color: #4CAF50; /* A distinct color for the header */
+    color: white;
+    text-align: center;
+    padding: 10px;
+    font-size: 18px;
+    font-weight: bold;
+    /* box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); Drop shadow for the header */
+  }
+  
+  #content {
+    padding: 20px;
+    text-align: center;
+  }
+  
+  #OnOff {
+    padding: 10px 20px;
+    font-size: 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: width 0.1s ease-in;
+  }
+  
+  #OnOff.on {
+    background-color: #4CAF50;
+    color: white;
+    width: 100%;
+  }
+  
+  #OnOff:not(.on) {
+    background-color: #f44336;
+    color: white;
+    width: 30%;
+  }
