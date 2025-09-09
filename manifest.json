@@ -2,9 +2,23 @@
     "manifest_version": 3,
     "name": "Stockly",
     "version": "1.0",
-    "description": "A sample Chrome extension for testing.",
+    "description": "Your AI companion extension to make investing worry free.",
     "action": {
       "default_popup": "popup.html"
     },
-    "permissions": []
+    "permissions": [],
+    "content_scripts": [
+    {
+    "matches": ["*://robinhood.com/*", "*://*.robinhood.com/*"],
+    "js": ["content-script.js"]
+    }
+  ],
+  "icons": {
+    "16": "Stockly_Logo.png",
+    "48": "Stockly_Logo.png",
+    "128": "Stockly_Logo.png"
   }
+  }
+
+
+    

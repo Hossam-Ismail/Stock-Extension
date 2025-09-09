@@ -16,3 +16,11 @@ button.addEventListener('click', () => {
         button.textContent = 'Off'; // Change button text
     }
 });
+// make the on and off interact with the content script
+chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    const activeTab = tabs[0];
+    if (activeTab) {
+        chrome.tabs.sendMessage(activeTab.id, { action: isOn ? 'start' : 'stop' });
+    }
+});
+
