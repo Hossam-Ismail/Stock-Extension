@@ -1,16 +1,25 @@
 {
-    "manifest_version": 3,
-    "name": "Stockly",
-    "version": "1.0",
-    "description": "Your AI companion extension to make investing worry free.",
-    "action": {
-      "default_popup": "popup.html"
-    },
-    "permissions": [],
-    "content_scripts": [
+  "manifest_version": 3,
+  "name": "Stockly",
+  "version": "1.0",
+  "description": "Your AI companion extension to make investing worry free.",
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "Stockly_Logo.png",
+      "48": "Stockly_Logo.png",
+      "128": "Stockly_Logo.png"
+    }
+  },
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "content_scripts": [
     {
-    "matches": ["*://robinhood.com/*", "*://*.robinhood.com/*"],
-    "js": ["content-script.js"]
+      "matches": ["*://robinhood.com/*", "*://*.robinhood.com/*"],
+      "js": ["content-script.js"],
+      "run_at": "document_end"
     }
   ],
   "icons": {
@@ -18,7 +27,4 @@
     "48": "Stockly_Logo.png",
     "128": "Stockly_Logo.png"
   }
-  }
-
-
-    
+}

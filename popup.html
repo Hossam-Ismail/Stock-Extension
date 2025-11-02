@@ -5,16 +5,48 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Stockly</title>
     <link rel="stylesheet" href="popup.css" />
-    <!-- Link to external CSS -->
   </head>
   <body>
     <div id="popup">
       <div id="header">Stockly</div>
+
       <div id="content">
-        <button id="OnOff">On</button>
+        <!-- Status indicator -->
+        <div id="status-container">
+          <div id="status-dot"></div>
+          <span id="status-text">Extension Active</span>
+        </div>
+
+        <!-- Main toggle button -->
+        <button id="OnOff">
+          <span>Enabled</span>
+        </button>
+
+        <!-- Feature info -->
+        <div id="features">
+          <div class="feature-item">
+            <span class="feature-icon">🎯</span>
+            <span class="feature-text">AI-Powered Analysis</span>
+          </div>
+          <div class="feature-item">
+            <span class="feature-icon">📊</span>
+            <span class="feature-text">Real-time Insights</span>
+          </div>
+          <div class="feature-item">
+            <span class="feature-icon">🎓</span>
+            <span class="feature-text">Beginner-Friendly</span>
+          </div>
+        </div>
+
+        <!-- Settings link -->
+        <div id="footer">
+          <a href="#" id="settings-link">⚙️ Settings</a>
+          <span class="divider">|</span>
+          <a href="#" id="help-link">❓ Help</a>
+        </div>
       </div>
     </div>
+
     <script src="popup.js"></script>
-    <!-- Link to your JavaScript file -->
   </body>
 </html>
