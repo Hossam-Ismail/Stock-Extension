@@ -1,34 +1,218 @@
+// ==========================================
+// STOCKLY - Trading Platform Integration
+// Focus: Platforms where users actually TRADE
+// ==========================================
+
 // ===== EXTENSION STATE MANAGEMENT =====
-// Track if extension is enabled
 let extensionEnabled = true;
 
-// ===== TICKER DETECTION =====
-// Function to extract stock ticker from page title
-function getStockTicker() {
-   const title = document.title;
-   const ticker = title.split(' - ')[0];
-   return ticker;
+// ===== PLATFORM DETECTION =====
+const PLATFORMS = {
+  robinhood: {
+    name: 'Robinhood',
+    type: 'broker',
+    detect: () => {
+      const hostname = window.location.hostname.includes('robinhood.com');
+      const path = window.location.pathname;
+      
+      // Only activate on pages with specific assets
+      // Note: Robinhood uses /indexes/ (plural) not /index/
+      return hostname && (
+        path.includes('/stocks/') || 
+        path.includes('/crypto/') ||
+        path.includes('/indexes/') ||  // Fixed: was /index/
+        path.includes('/index/')       // Keep both just in case
+      );
+    },
+    selectors: {
+      // Multiple selectors to cover all asset types:
+      // - web-app-emotion-cache-1y8ops3 (stocks, ETFs)
+      // - css-1l9qpx9 (crypto)
+      // - css-1y8ops3 (indices)
+      title: 'h1.web-app-emotion-cache-1y8ops3, h1.css-1l9qpx9, h1.css-1y8ops3, h1[class*="css-"]',
+      insertPoint: 'h1.web-app-emotion-cache-1y8ops3, h1.css-1l9qpx9, h1.css-1y8ops3, h1[class*="css-"]'
+    },
+    getTicker: () => {
+      const title = document.title;
+      let ticker = title.split(' - ')[0].split(' | ')[0].trim();
+      
+      // If ticker is in parentheses like "Bitcoin (BTC)", extract BTC
+      const matchParens = ticker.match(/\(([A-Z^.]+)\)/);
+      if (matchParens) {
+        return matchParens[1];
+      }
+      
+      // For indices where ticker isn't in title, extract from URL
+      // URL formats: 
+      //   robinhood.com/stocks/AAPL
+      //   robinhood.com/crypto/BTC
+      //   robinhood.com/indexes/SPX (note: plural!)
+      //   robinhood.com/index/SPX (just in case)
+      const urlMatch = window.location.pathname.match(/\/(stocks|crypto|indexes?|index)\/([^/]+)/);
+      if (urlMatch) {
+        const urlTicker = urlMatch[2].toUpperCase();
+        
+        // If title is like "S&P 500 Index" (no ticker symbol), use URL ticker
+        if (ticker.includes('Index') || ticker.includes('ETF') || ticker.length > 10) {
+          return urlTicker;
+        }
+      }
+      
+      return ticker;
+    },
+    isCrypto: () => {
+      // Detect if we're on a crypto page
+      return window.location.pathname.includes('/crypto/');
+    }
+  },
+  
+  webull: {
+    name: 'Webull',
+    type: 'broker',
+    detect: () => window.location.hostname.includes('webull.com') && window.location.pathname.includes('/quote/'),
+    selectors: {
+      title: '.stock-name .ticker',
+      insertPoint: '.stock-name'
+    },
+    getTicker: () => {
+      const tickerEl = document.querySelector('.stock-name .ticker');
+      return tickerEl?.textContent?.trim()?.toUpperCase();
+    }
+  },
+  
+  schwab: {
+    name: 'Charles Schwab',
+    type: 'broker',
+    detect: () => window.location.hostname.includes('schwab.com') && window.location.pathname.includes('/research/'),
+    selectors: {
+      title: '.symbol-name',
+      insertPoint: '.symbol-header'
+    },
+    getTicker: () => {
+      // Schwab format varies, try multiple selectors
+      const symbolEl = document.querySelector('.symbol-name, [data-symbol]');
+      return symbolEl?.textContent?.trim()?.toUpperCase() || 
+             symbolEl?.getAttribute('data-symbol');
+    }
+  },
+  
+  tdameritrade: {
+    name: 'TD Ameritrade',
+    type: 'broker',
+    detect: () => window.location.hostname.includes('tdameritrade.com'),
+    selectors: {
+      title: '.symbol-header h1',
+      insertPoint: '.symbol-header'
+    },
+    getTicker: () => {
+      // TD Ameritrade uses various formats
+      const match = window.location.href.match(/symbol=([A-Z.]+)/i);
+      return match ? match[1] : null;
+    }
+  },
+  
+  etrade: {
+    name: 'E*TRADE',
+    type: 'broker',
+    detect: () => window.location.hostname.includes('etrade.com') && window.location.pathname.includes('/stock/'),
+    selectors: {
+      title: '.stock-symbol',
+      insertPoint: '.stock-header'
+    },
+    getTicker: () => {
+      const match = window.location.pathname.match(/\/stock\/([A-Z]+)/);
+      return match ? match[1] : null;
+    }
+  }
+};
+
+// Detect current platform
+let currentPlatform = null;
+
+function detectAndInitializePlatform() {
+  // Reset current platform
+  currentPlatform = null;
+  
+  for (const [key, config] of Object.entries(PLATFORMS)) {
+    if (config.detect()) {
+      currentPlatform = { key, ...config };
+      console.log(`🎯 Stockly detected: ${config.name} (Trading Platform)`);
+      
+      // Initialize if enabled
+      if (extensionEnabled) {
+        initializeStockly();
+      }
+      return true;
+    }
+  }
+  
+  console.log('⚠️ Stockly: Not on a supported trading platform');
+  return false;
 }
 
-// Track last title to detect changes
-let lastTitle = document.title;
+// Initial detection
+detectAndInitializePlatform();
 
-// Function that checks for title changes every second
+// Monitor URL changes (for Single Page Apps like Robinhood)
+let lastUrl = window.location.href;
+
 setInterval(() => {
-   if (document.title !== lastTitle) {
-       lastTitle = document.title;
-       const newTicker = getStockTicker();
-       console.log("Stock changed to:", newTicker);
-   }
-}, 1000);
+  const currentUrl = window.location.href;
+  
+  if (currentUrl !== lastUrl) {
+    console.log('🔄 URL changed:', currentUrl);
+    lastUrl = currentUrl;
+    
+    // Re-detect platform
+    const wasDetected = currentPlatform !== null;
+    detectAndInitializePlatform();
+    
+    // If we just moved from non-stock page to stock page
+    if (!wasDetected && currentPlatform) {
+      console.log('✨ Now on supported page, initializing...');
+    }
+    
+    // If still on supported platform, check if ticker changed
+    if (currentPlatform) {
+      const newTicker = getStockTicker();
+      if (newTicker && newTicker !== lastTicker) {
+        console.log("📊 Stock changed to:", newTicker);
+        lastTicker = newTicker;
+        
+        // Remove old button and insert new one
+        setTimeout(() => {
+          const existingBtn = document.getElementById('analyze-btn-ext');
+          if (existingBtn) {
+            existingBtn.parentElement?.remove();
+          }
+          insertAnalyzeButton();
+        }, 500);
+      }
+    }
+  }
+}, 500); // Check every 500ms
+
+// ===== TICKER DETECTION =====
+function getStockTicker() {
+  if (!currentPlatform) return null;
+  return currentPlatform.getTicker();
+}
+
+// Track last ticker to detect stock changes within the same page type
+let lastTicker = null;
 
 // ===== WIDGET INJECTION =====
-// Inject floating Stockly UI on Robinhood
 function injectStocklyWidget() {
     if (!extensionEnabled) {
         console.log('Widget injection skipped - extension disabled');
         return;
     }
+    
+    if (!currentPlatform) {
+        console.log('⚠️ Cannot inject widget - no platform detected');
+        return;
+    }
+    
     if (document.getElementById('stockly-widget-ext')) {
         console.log('Widget already exists');
         return;
@@ -42,38 +226,100 @@ function injectStocklyWidget() {
     widget.style.left = 'unset';
     widget.style.transform = 'translateY(-50%)';
     widget.style.zIndex = '99999';
-    widget.style.width = '320px';
-    widget.style.background = '#2a2a2a';
-    widget.style.borderRadius = '12px';
-    widget.style.boxShadow = '0 8px 32px rgba(0,0,0,0.18)';
+    widget.style.width = '420px';
+    widget.style.maxHeight = '85vh';
+    widget.style.background = 'rgba(20, 20, 30, 0.98)';
+    widget.style.borderRadius = '16px';
+    widget.style.boxShadow = '0 20px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05)';
     widget.style.color = 'white';
     widget.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif";
     widget.style.overflow = 'hidden';
-    widget.style.animation = 'slideIn 0.3s ease-out';
-    widget.style.border = 'none';
+    widget.style.animation = 'slideIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+    widget.style.border = '1px solid rgba(46, 185, 224, 0.3)';
+    widget.style.backdropFilter = 'blur(20px)';
+    
     widget.innerHTML = `
-        <div style="background: linear-gradient(135deg, #0b4c9a 0%, #1d84c1 50%, #2eb9e0 100%); padding: 24px 24px 16px 24px; border-radius: 12px 12px 0 0; font-size: 22px; font-weight: 700; letter-spacing: 0.3px; position: relative; text-align: center;">
-            Stockly
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;background:linear-gradient(135deg,#0b4c9a,#1d84c1);border-radius:16px 16px 0 0;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <span style="font-size:20px;">📊</span>
+                <div>
+                    <div style="font-size:16px;font-weight:700;color:#fff;">Stockly Analysis</div>
+                    <div style="font-size:11px;color:rgba(255,255,255,0.7);">${currentPlatform.name}</div>
+                </div>
+            </div>
+            <button id="stockly-close-btn" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#fff;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:all 0.2s;">✕</button>
         </div>
-        <div id="stockly-widget-content" style="padding: 20px; text-align: left; font-size: 14px; line-height: 1.7; color: #e0e0e0; max-height: 500px; overflow-y: auto;">
-            Welcome to Stockly! Your AI companion for stress-free investing.<br><br>
-            <b style="color:#1d84c1;">Project Features:</b><br>
-            <div style="margin-left:12px;margin-top:4px;">• Friendly stock insights</div>
-            <div style="margin-left:12px;margin-top:4px;">• Beginner tips</div>
-            <div style="margin-left:12px;margin-top:4px;">• Real-time updates</div>
-            <div style="margin-left:12px;margin-top:4px;">• Personalized suggestions</div>
-            <br>
-            <i style="color:#aaa;">Click "Analyze" on any stock to get started!</i>
+        <div id="stockly-widget-content" style="padding: 20px; text-align: left; font-size: 14px; line-height: 1.7; color: #e0e0e0; max-height: calc(85vh - 80px); overflow-y: auto;">
+            <div style="text-align:center;padding:40px 20px;">
+                <div style="font-size:48px;margin-bottom:16px;">💹</div>
+                <div style="color:#2eb9e0;font-size:18px;font-weight:600;margin-bottom:8px;">Smart Trading Analysis</div>
+                <div style="color:#aaa;font-size:13px;margin-bottom:20px;">Get instant AI insights while you trade</div>
+                <div style="text-align:left;max-width:300px;margin:0 auto;font-size:13px;color:#c0c0c0;">
+                    <div style="margin-bottom:12px;padding:12px;background:rgba(46,185,224,0.08);border-left:3px solid #2eb9e0;border-radius:6px;">
+                        <strong style="color:#2eb9e0;">✨ Before You Trade:</strong><br>
+                        • Market context & catalysts<br>
+                        • Recent news sentiment<br>
+                        • Key risk factors<br>
+                        • Research checklist
+                    </div>
+                    <div style="text-align:center;color:#888;font-size:12px;margin-top:16px;">
+                        Click <strong style="color:#667eea;">"Analyze"</strong> next to any stock
+                    </div>
+                </div>
+            </div>
         </div>
-        <button id="stockly-close-btn" style="position:absolute;top:12px;right:16px;background:transparent;border:none;color:white;font-size:24px;cursor:pointer;transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'">&times;</button>
     `;
+    
+    // Add custom scrollbar styles
+    if (!document.getElementById('stockly-scrollbar-style')) {
+        const scrollStyle = document.createElement('style');
+        scrollStyle.id = 'stockly-scrollbar-style';
+        scrollStyle.textContent = `
+            #stockly-widget-content::-webkit-scrollbar {
+                width: 8px;
+            }
+            #stockly-widget-content::-webkit-scrollbar-track {
+                background: rgba(0, 0, 0, 0.2);
+                border-radius: 10px;
+            }
+            #stockly-widget-content::-webkit-scrollbar-thumb {
+                background: rgba(46, 185, 224, 0.3);
+                border-radius: 10px;
+            }
+            #stockly-widget-content::-webkit-scrollbar-thumb:hover {
+                background: rgba(46, 185, 224, 0.5);
+            }
+        `;
+        document.head.appendChild(scrollStyle);
+    }
+    
     document.body.appendChild(widget);
+    
+    // Close button handler
     document.getElementById('stockly-close-btn').onclick = () => {
-        widget.remove();
-        showReopenButton();
+        widget.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => {
+            widget.remove();
+            showReopenButton();
+        }, 300);
     };
     
-    console.log('✅ Stockly widget injected');
+    // Add slide out animation
+    if (!document.getElementById('stockly-slideout-anim')) {
+        const style = document.createElement('style');
+        style.id = 'stockly-slideout-anim';
+        style.textContent = `
+            @keyframes slideOut {
+                to {
+                    opacity: 0;
+                    transform: translateY(-50%) translateX(100px) scale(0.9);
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    console.log('✅ Stockly widget injected on', currentPlatform.name);
 }
 
 function showReopenButton() {
@@ -112,17 +358,18 @@ function showReopenButton() {
     document.body.appendChild(btn);
 }
 
-// Function to remove all Stockly elements
 function removeStocklyWidget() {
   const widget = document.getElementById('stockly-widget-ext');
   const button = document.getElementById('stockly-reopen-btn');
   const analyzeBtn = document.getElementById('analyze-btn-ext');
-  const btnContainer = document.querySelector('div[style*="inline-flex"]');
   
   if (widget) widget.remove();
   if (button) button.remove();
-  if (analyzeBtn) analyzeBtn.remove();
-  if (btnContainer && btnContainer.contains(analyzeBtn)) btnContainer.remove();
+  if (analyzeBtn) {
+    const parent = analyzeBtn.parentElement;
+    analyzeBtn.remove();
+    if (parent && parent.children.length === 0) parent.remove();
+  }
   
   console.log('❌ Stockly widgets removed');
 }
@@ -134,7 +381,12 @@ function insertAnalyzeButton() {
         return;
     }
     
-    const titleElem = document.querySelector('h1.web-app-emotion-cache-1y8ops3');
+    if (!currentPlatform) {
+        console.log('No platform detected');
+        return;
+    }
+    
+    const titleElem = document.querySelector(currentPlatform.selectors.title);
     
     if (!titleElem) {
         console.log('⏳ Title element not found yet, waiting...');
@@ -148,11 +400,12 @@ function insertAnalyzeButton() {
     
     console.log('📍 Found title element:', titleElem.textContent);
     
-    // Create button container for better positioning
+    // Create button container
     const btnContainer = document.createElement('div');
     btnContainer.style.display = 'inline-flex';
     btnContainer.style.marginLeft = '16px';
     btnContainer.style.verticalAlign = 'middle';
+    btnContainer.style.marginTop = '8px';
     
     const analyzeBtn = document.createElement('button');
     analyzeBtn.id = 'analyze-btn-ext';
@@ -183,7 +436,7 @@ function insertAnalyzeButton() {
         font-weight: 500;
     `;
 
-    // Shimmer effect overlay
+    // Shimmer effect
     const shimmer = document.createElement('div');
     shimmer.style.cssText = `
         position: absolute;
@@ -218,15 +471,26 @@ function insertAnalyzeButton() {
     };
 
     btnContainer.appendChild(analyzeBtn);
-    titleElem.insertAdjacentElement('afterend', btnContainer);
+    
+    // Insert based on platform
+    const insertPoint = document.querySelector(currentPlatform.selectors.insertPoint);
+    if (insertPoint) {
+        insertPoint.insertAdjacentElement('afterend', btnContainer);
+    }
 
-    // Click handler for analyze button
+    // Click handler - SAME AS BEFORE
     analyzeBtn.addEventListener('click', async function() {
-        // Disable button during loading
         analyzeBtn.style.pointerEvents = 'none';
         analyzeBtn.style.opacity = '0.7';
         
         const ticker = getStockTicker();
+        if (!ticker) {
+            alert('Could not detect stock ticker');
+            analyzeBtn.style.pointerEvents = 'auto';
+            analyzeBtn.style.opacity = '1';
+            return;
+        }
+        
         const widget = document.getElementById('stockly-widget-ext');
         
         if (widget) {
@@ -234,7 +498,7 @@ function insertAnalyzeButton() {
             if (!contentDiv) {
                 contentDiv = document.createElement('div');
                 contentDiv.id = 'stockly-widget-content';
-                contentDiv.style.cssText = 'padding: 20px; text-align: left; font-size: 14px; line-height: 1.8; color: #e0e0e0; max-height: 500px; overflow-y: auto;';
+                contentDiv.style.cssText = 'padding: 20px; text-align: left; font-size: 14px; line-height: 1.8; color: #e0e0e0; max-height: calc(85vh - 80px); overflow-y: auto;';
                 widget.appendChild(contentDiv);
             }
             
@@ -243,17 +507,19 @@ function insertAnalyzeButton() {
                 <div style="text-align:center;padding:50px 20px;">
                     <div style="font-size:48px;margin-bottom:16px;animation: bounce 1s infinite;">⚡</div>
                     <div style="color:#2eb9e0;font-size:18px;font-weight:600;margin-bottom:8px;">Analyzing ${ticker}</div>
-                    <div style="color:#aaa;font-size:13px;">Getting the latest insights...</div>
+                    <div style="color:#aaa;font-size:13px;">Gathering market data and insights...</div>
                     <div class="stockly-spinner" style="margin-top:20px;"></div>
                 </div>
             `;
         }
         
         try {
+            const isCrypto = currentPlatform.isCrypto ? currentPlatform.isCrypto() : false;
+            
             const res = await fetch('http://localhost:3001/analyze', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ticker })
+                body: JSON.stringify({ ticker, isCrypto })
             });
             
             const data = await res.json();
@@ -262,8 +528,6 @@ function insertAnalyzeButton() {
             if (widget && data.result) {
                 const contentDiv = widget.querySelector('#stockly-widget-content');
                 contentDiv.innerHTML = data.result;
-                
-                // Smooth scroll to top of widget
                 contentDiv.scrollTop = 0;
             } else if (widget) {
                 widget.querySelector('#stockly-widget-content').innerHTML = `
@@ -289,17 +553,27 @@ function insertAnalyzeButton() {
                 `;
             }
         } finally {
-            // Re-enable button
             analyzeBtn.style.pointerEvents = 'auto';
             analyzeBtn.style.opacity = '1';
         }
     });
 
-    // Add animations
+    // Add animations (SAME AS BEFORE)
     if (!document.getElementById('stockly-animations')) {
         const style = document.createElement('style');
         style.id = 'stockly-animations';
         style.textContent = `
+            @keyframes slideIn {
+                from {
+                    opacity: 0;
+                    transform: translateY(-50%) translateX(100px) scale(0.9);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(-50%) translateX(0) scale(1);
+                }
+            }
+            
             @keyframes bounce {
                 0%, 100% { transform: translateY(0); }
                 50% { transform: translateY(-10px); }
@@ -323,67 +597,62 @@ function insertAnalyzeButton() {
         document.head.appendChild(style);
     }
     
-    console.log('✅ Analyze button inserted next to:', titleElem.textContent);
+    console.log('✅ Analyze button inserted');
 }
 
 // ===== INITIALIZATION =====
-// Wait for page to be fully loaded
 function initializeStockly() {
-    console.log('🚀 Initializing Stockly...');
+    if (!currentPlatform) {
+        console.log('⚠️ Stockly: Not a supported trading platform');
+        return;
+    }
     
-    // Check if chrome.storage is available
+    console.log(`🚀 Initializing Stockly on ${currentPlatform.name}...`);
+    
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
-        // Load state from storage
         chrome.storage.sync.get(['stocklyEnabled'], (result) => {
             extensionEnabled = result.stocklyEnabled !== undefined ? result.stocklyEnabled : true;
             console.log('📊 Extension state:', extensionEnabled ? 'ENABLED' : 'DISABLED');
-            
             startStockly();
         });
     } else {
-        // Chrome storage not available, use default state
         console.log('⚠️ Chrome storage not available, using default state');
         extensionEnabled = true;
         startStockly();
     }
 }
 
-// Start Stockly features
 function startStockly() {
     if (!extensionEnabled) {
         console.log('Extension is disabled, not injecting');
         return;
     }
     
-    // Inject widget immediately
-    injectStocklyWidget();
+    // Only inject widget if it doesn't exist
+    if (!document.getElementById('stockly-widget-ext') && !document.getElementById('stockly-reopen-btn')) {
+        injectStocklyWidget();
+    }
     
-    // Try to insert button immediately
+    // Try to insert button
     insertAnalyzeButton();
     
-    // Also set up retry mechanism
-    let retryCount = 0;
-    const maxRetries = 10;
-    const retryInterval = setInterval(() => {
-        if (document.getElementById('analyze-btn-ext') || retryCount >= maxRetries) {
-            clearInterval(retryInterval);
-            if (retryCount >= maxRetries) {
-                console.log('⚠️ Could not find title element after', maxRetries, 'attempts');
+    // Set up retry mechanism (only if button doesn't exist yet)
+    if (!document.getElementById('analyze-btn-ext')) {
+        let retryCount = 0;
+        const maxRetries = 10;
+        const retryInterval = setInterval(() => {
+            if (document.getElementById('analyze-btn-ext') || retryCount >= maxRetries) {
+                clearInterval(retryInterval);
+                if (retryCount >= maxRetries) {
+                    console.log(`⚠️ Could not find title element on ${currentPlatform.name} after ${maxRetries} attempts`);
+                }
+                return;
             }
-            return;
-        }
-        console.log('🔄 Retry', retryCount + 1, '- Looking for title element...');
-        insertAnalyzeButton();
-        retryCount++;
-    }, 500); // Try every 500ms
-}
-
-// Run initialization when DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeStockly);
-} else {
-    // DOM already loaded
-    initializeStockly();
+            console.log(`🔄 Retry ${retryCount + 1} - Looking for title element...`);
+            insertAnalyzeButton();
+            retryCount++;
+        }, 500);
+    }
 }
 
 // Listen for enable/disable messages from popup
@@ -403,14 +672,16 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
             sendResponse({ status: 'disabled' });
         }
         
-        return true; // Keep message channel open for async response
+        return true;
     });
 }
 
-// ===== OBSERVERS =====
-// Use MutationObserver to watch for the title element appearing
 const observer = new MutationObserver(() => {
-    insertAnalyzeButton();
+    if (extensionEnabled && !document.getElementById('analyze-btn-ext')) {
+        insertAnalyzeButton();
+    }
 });
 
-observer.observe(document.body, { childList: true, subtree: true });
+if (currentPlatform) {
+    observer.observe(document.body, { childList: true, subtree: true });
+}
