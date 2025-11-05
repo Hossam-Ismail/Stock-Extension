@@ -1,5 +1,7 @@
 const express = require("express");
 const cors = require("cors");
+const { Pool } = require("pg");
+const crypto = require("crypto");
 require("dotenv").config();
 const fetch = (...args) => import("node-fetch").then(({ default: fetch }) => fetch(...args));
 
@@ -11,6 +13,88 @@ const PORT = process.env.PORT || 3001;
 const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
 const NEWS_KEY = process.env.NEWS_API_KEY;
 const PRICE_KEY = process.env.ALPHA_VANTAGE_KEY;
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+
+// ==========================================
+// DATABASE CONNECTION (NEW)
+// ==========================================
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
+
+pool.query('SELECT NOW()', (err, res) => {
+  if (err) console.error('❌ Database error:', err);
+  else console.log('✅ Database connected');
+});
+
+// ==========================================
+// GOOGLE OAUTH (NEW)
+// ==========================================
+app.post('/auth/google', async (req, res) => {
+  const { idToken } = req.body;
+  if (!idToken) return res.status(400).json({ error: 'Missing Google token' });
+  
+  try {
+    const response = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=\${idToken}`);
+    const googleData = await response.json();
+    if (googleData.error) return res.status(401).json({ error: 'Invalid Google token' });
+    
+    const { email, name, picture, sub: googleId } = googleData;
+    let user = await pool.query('SELECT * FROM users WHERE email = \$1', [email]);
+    
+    if (user.rows.length === 0) {
+      const authToken = crypto.randomBytes(32).toString('hex');
+      user = await pool.query(
+        'INSERT INTO users (email, name, picture, google_id, auth_token) VALUES (\$1, \$2, \$3, \$4, \$5) RETURNING *',
+        [email, name, picture, googleId, authToken]
+      );
+      console.log('✅ New user:', email);
+    } else {
+      await pool.query('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = \$1', [user.rows[0].id]);
+      console.log('✅ User logged in:', email);
+    }
+    
+    const userData = user.rows[0];
+    res.json({
+      success: true,
+      user: { id: userData.id, email: userData.email, name: userData.name, picture: userData.picture, token: userData.auth_token }
+    });
+  } catch (err) {
+    console.error('OAuth error:', err);
+    res.status(500).json({ error: 'Authentication failed' });
+  }
+});
+
+app.post('/auth/verify', async (req, res) => {
+  const { token } = req.body;
+  try {
+    const result = await pool.query('SELECT id, email, name, picture FROM users WHERE auth_token = \$1', [token]);
+    if (result.rows.length === 0) return res.status(401).json({ error: 'Invalid token' });
+    res.json({ valid: true, user: result.rows[0] });
+  } catch (err) {
+    console.error('Verify error:', err);
+    res.status(500).json({ error: 'Verification failed' });
+  }
+});
+
+// ==========================================
+// AUTH MIDDLEWARE (NEW)
+// ==========================================
+async function authenticateUser(req, res, next) {
+  const { token } = req.body;
+  if (!token) return res.status(401).json({ error: 'Authentication required' });
+  
+  try {
+    const result = await pool.query('SELECT * FROM users WHERE auth_token = \$1', [token]);
+    if (result.rows.length === 0) return res.status(401).json({ error: 'Invalid token' });
+    req.user = result.rows[0];
+    next();
+  } catch (err) {
+    console.error('Auth error:', err);
+    res.status(500).json({ error: 'Authentication failed' });
+  }
+}
 
 // Utility: Calculate technical indicators
 const calculateTechnicalSignals = (priceData, changePct) => {
@@ -395,7 +479,7 @@ RULES:
   }
 }
 
-app.post("/analyze", async (req, res) => {
+app.post("/analyze", authenticateUser, async (req, res) => {
   const { ticker, isCrypto } = req.body; // Frontend will tell us if it's crypto
   if (!ticker) return res.status(400).json({ error: "Missing ticker" });
 
