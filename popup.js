@@ -56,6 +56,26 @@ logoutBtn.addEventListener('click', () => {
   });
 });
 
+// Listen for storage changes (auth from landing page)
+chrome.storage.onChanged.addListener((changes, namespace) => {
+  if (namespace === 'sync' && changes.stocklyAuthenticated) {
+    if (changes.stocklyAuthenticated.newValue === true) {
+      // User just logged in, refresh to show profile
+      chrome.storage.sync.get(['stocklyUser'], (result) => {
+        if (result.stocklyUser) {
+          console.log('✅ Auth detected, updating popup UI');
+          userProfile.style.display = 'block';
+          signInContainer.style.display = 'none';
+          document.getElementById('user-name').textContent = result.stocklyUser.name;
+          document.getElementById('user-email').textContent = result.stocklyUser.email;
+          document.getElementById('user-picture').src = result.stocklyUser.picture;
+          isAuthenticated = true;
+        }
+      });
+    }
+  }
+});
+
 // Show terms acceptance modal
 function showTermsModal() {
   const modal = document.createElement('div');

@@ -20,6 +20,11 @@
       "matches": ["*://robinhood.com/*", "*://*.robinhood.com/*"],
       "js": ["content-script.js"],
       "run_at": "document_end"
+    },
+    {
+      "matches": ["*://stockly-landing.vercel.app/*", "*://*.stockly-landing.vercel.app/*"],
+      "js": ["content-script.js"],
+      "run_at": "document_end"
     }
   ],
   "icons": {

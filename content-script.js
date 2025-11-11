@@ -21,6 +21,18 @@ window.addEventListener('message', (event) => {
                 stocklyAuthenticated: true
             }, () => {
                 console.log('✅ Auth token saved to Chrome storage');
+
+                // Notify that authentication is complete
+                if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+                    chrome.runtime.sendMessage({
+                        type: 'AUTH_SUCCESS',
+                        user: {
+                            email: event.data.email,
+                            name: event.data.name,
+                            picture: event.data.picture
+                        }
+                    });
+                }
             });
         }
     }
