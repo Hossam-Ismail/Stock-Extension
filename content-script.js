@@ -516,7 +516,7 @@ function insertAnalyzeButton() {
         try {
             const isCrypto = currentPlatform.isCrypto ? currentPlatform.isCrypto() : false;
             
-            const res = await fetch('http://localhost:3001/analyze', {
+            const res = await fetch('https://stockly-backend-production.up.railway.app/analyze', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ticker, isCrypto })
@@ -545,7 +545,7 @@ function insertAnalyzeButton() {
                     <div style="text-align:center;padding:40px 20px;">
                         <div style="font-size:48px;margin-bottom:16px;">🔌</div>
                         <div style="color:#e74c3c;font-size:18px;font-weight:600;margin-bottom:8px;">Connection Lost</div>
-                        <div style="color:#aaa;font-size:13px;margin-bottom:20px;">Make sure the backend is running on port 3001</div>
+                        <div style="color:#aaa;font-size:13px;margin-bottom:20px;">Unable to connect to the backend server</div>
                         <button onclick="location.reload()" style="background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);color:white;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);">
                             Refresh Page
                         </button>
