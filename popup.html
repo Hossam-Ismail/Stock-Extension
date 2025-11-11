@@ -11,6 +11,28 @@
       <div id="header">Stockly</div>
 
       <div id="content">
+        <!-- User profile (shown when logged in) -->
+        <div id="user-profile" style="display:none;padding:12px;background:rgba(102,126,234,0.1);border-radius:10px;margin-bottom:16px;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <img id="user-picture" style="width:40px;height:40px;border-radius:50%;border:2px solid #667eea;" />
+            <div style="flex:1;">
+              <div id="user-name" style="font-weight:600;font-size:14px;color:#333;"></div>
+              <div id="user-email" style="font-size:11px;color:#666;"></div>
+            </div>
+          </div>
+          <button id="logout-btn" style="width:100%;margin-top:10px;padding:8px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:6px;cursor:pointer;font-size:12px;color:#ef4444;font-weight:600;">Sign Out</button>
+        </div>
+
+        <!-- Sign in button (shown when not logged in) -->
+        <div id="sign-in-container" style="display:none;padding:20px;text-align:center;background:rgba(102,126,234,0.05);border-radius:10px;margin-bottom:16px;">
+          <div style="font-size:40px;margin-bottom:12px;">🔐</div>
+          <div style="font-size:14px;font-weight:600;color:#333;margin-bottom:8px;">Sign In Required</div>
+          <div style="font-size:12px;color:#666;margin-bottom:16px;">Sign in to start analyzing stocks</div>
+          <button id="sign-in-btn" style="width:100%;padding:12px;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);">
+            Sign In with Google
+          </button>
+        </div>
+
         <!-- Status indicator -->
         <div id="status-container">
           <div id="status-dot"></div>

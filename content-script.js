@@ -3,6 +3,29 @@
 // Focus: Platforms where users actually TRADE
 // ==========================================
 
+// ===== AUTHENTICATION =====
+// Listen for auth messages from landing page
+window.addEventListener('message', (event) => {
+    if (event.data.type === 'STOCKLY_AUTH') {
+        console.log('🔐 Received auth token from landing page');
+
+        // Store auth data in Chrome storage
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
+            chrome.storage.sync.set({
+                stocklyToken: event.data.token,
+                stocklyUser: {
+                    email: event.data.email,
+                    name: event.data.name,
+                    picture: event.data.picture
+                },
+                stocklyAuthenticated: true
+            }, () => {
+                console.log('✅ Auth token saved to Chrome storage');
+            });
+        }
+    }
+});
+
 // ===== EXTENSION STATE MANAGEMENT =====
 let extensionEnabled = true;
 
@@ -515,11 +538,41 @@ function insertAnalyzeButton() {
         
         try {
             const isCrypto = currentPlatform.isCrypto ? currentPlatform.isCrypto() : false;
-            
+
+            // Get auth token from Chrome storage
+            const authData = await new Promise((resolve) => {
+                chrome.storage.sync.get(['stocklyToken', 'stocklyAuthenticated'], (result) => {
+                    resolve(result);
+                });
+            });
+
+            // Check if user is authenticated
+            if (!authData.stocklyAuthenticated || !authData.stocklyToken) {
+                if (widget) {
+                    widget.querySelector('#stockly-widget-content').innerHTML = `
+                        <div style="text-align:center;padding:40px 20px;">
+                            <div style="font-size:48px;margin-bottom:16px;">🔐</div>
+                            <div style="color:#667eea;font-size:18px;font-weight:600;margin-bottom:8px;">Sign In Required</div>
+                            <div style="color:#aaa;font-size:13px;margin-bottom:20px;">Please sign in to use Stockly analysis</div>
+                            <a href="https://stockly-landing.vercel.app" target="_blank" style="display:inline-block;padding:12px 24px;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);color:white;text-decoration:none;border-radius:8px;font-size:14px;font-weight:600;box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);">
+                                Sign In with Google
+                            </a>
+                        </div>
+                    `;
+                }
+                analyzeBtn.style.pointerEvents = 'auto';
+                analyzeBtn.style.opacity = '1';
+                return;
+            }
+
             const res = await fetch('https://stockly-backend-production.up.railway.app/analyze', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ticker, isCrypto })
+                body: JSON.stringify({
+                    ticker,
+                    isCrypto,
+                    token: authData.stocklyToken
+                })
             });
             
             const data = await res.json();

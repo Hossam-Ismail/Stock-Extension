@@ -4,18 +4,56 @@ const statusDot = document.getElementById('status-dot');
 const statusText = document.getElementById('status-text');
 const settingsLink = document.getElementById('settings-link');
 const helpLink = document.getElementById('help-link');
+const signInBtn = document.getElementById('sign-in-btn');
+const signInContainer = document.getElementById('sign-in-container');
+const userProfile = document.getElementById('user-profile');
+const logoutBtn = document.getElementById('logout-btn');
 
 // Initialize state from storage
 let isEnabled = true;
+let isAuthenticated = false;
 
-// Check if user has accepted terms
-chrome.storage.sync.get(['hasAcceptedTerms', 'stocklyEnabled'], (result) => {
+// Check authentication and terms
+chrome.storage.sync.get(['hasAcceptedTerms', 'stocklyEnabled', 'stocklyAuthenticated', 'stocklyUser'], (result) => {
+  isAuthenticated = result.stocklyAuthenticated || false;
+
+  // Update UI based on auth state
+  if (isAuthenticated && result.stocklyUser) {
+    // Show user profile
+    userProfile.style.display = 'block';
+    signInContainer.style.display = 'none';
+    document.getElementById('user-name').textContent = result.stocklyUser.name;
+    document.getElementById('user-email').textContent = result.stocklyUser.email;
+    document.getElementById('user-picture').src = result.stocklyUser.picture;
+  } else {
+    // Show sign in button
+    userProfile.style.display = 'none';
+    signInContainer.style.display = 'block';
+  }
+
   if (!result.hasAcceptedTerms) {
     showTermsModal();
   } else {
     isEnabled = result.stocklyEnabled !== undefined ? result.stocklyEnabled : true;
     updateUI();
   }
+});
+
+// Sign in button handler
+signInBtn.addEventListener('click', () => {
+  // Open landing page in new tab
+  chrome.tabs.create({ url: 'https://stockly-landing.vercel.app' });
+});
+
+// Logout button handler
+logoutBtn.addEventListener('click', () => {
+  chrome.storage.sync.remove(['stocklyToken', 'stocklyUser', 'stocklyAuthenticated'], () => {
+    console.log('🔓 User logged out');
+    // Refresh UI
+    userProfile.style.display = 'none';
+    signInContainer.style.display = 'block';
+    isAuthenticated = false;
+  });
 });
 
 // Show terms acceptance modal
