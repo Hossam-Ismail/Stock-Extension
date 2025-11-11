@@ -22,7 +22,10 @@ chrome.storage.sync.get(['hasAcceptedTerms', 'stocklyEnabled', 'stocklyAuthentic
     // Show user profile
     userProfile.style.display = 'block';
     signInContainer.style.display = 'none';
-    document.getElementById('user-name').textContent = result.stocklyUser.name;
+
+    // Use first name only for a friendlier greeting
+    const firstName = result.stocklyUser.name.split(' ')[0];
+    document.getElementById('user-name').textContent = firstName;
     document.getElementById('user-email').textContent = result.stocklyUser.email;
     document.getElementById('user-picture').src = result.stocklyUser.picture;
   } else {
@@ -66,7 +69,10 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
           console.log('✅ Auth detected, updating popup UI');
           userProfile.style.display = 'block';
           signInContainer.style.display = 'none';
-          document.getElementById('user-name').textContent = result.stocklyUser.name;
+
+          // Use first name only for a friendlier greeting
+          const firstName = result.stocklyUser.name.split(' ')[0];
+          document.getElementById('user-name').textContent = firstName;
           document.getElementById('user-email').textContent = result.stocklyUser.email;
           document.getElementById('user-picture').src = result.stocklyUser.picture;
           isAuthenticated = true;

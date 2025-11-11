@@ -12,15 +12,18 @@
 
       <div id="content">
         <!-- User profile (shown when logged in) -->
-        <div id="user-profile" style="display:none;padding:12px;background:rgba(102,126,234,0.1);border-radius:10px;margin-bottom:16px;">
-          <div style="display:flex;align-items:center;gap:12px;">
-            <img id="user-picture" style="width:40px;height:40px;border-radius:50%;border:2px solid #667eea;" />
+        <div id="user-profile" style="display:none;padding:16px;background:linear-gradient(135deg, rgba(102,126,234,0.08), rgba(118,75,162,0.08));border:1px solid rgba(102,126,234,0.2);border-radius:12px;margin-bottom:16px;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+            <img id="user-picture" style="width:48px;height:48px;border-radius:50%;border:2px solid #667eea;box-shadow: 0 2px 8px rgba(102,126,234,0.3);" />
             <div style="flex:1;">
-              <div id="user-name" style="font-weight:600;font-size:14px;color:#333;"></div>
-              <div id="user-email" style="font-size:11px;color:#666;"></div>
+              <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;">Welcome back,</div>
+              <div id="user-name" style="font-weight:700;font-size:15px;color:#333;margin-bottom:2px;"></div>
+              <div id="user-email" style="font-size:10px;color:#666;"></div>
             </div>
           </div>
-          <button id="logout-btn" style="width:100%;margin-top:10px;padding:8px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:6px;cursor:pointer;font-size:12px;color:#ef4444;font-weight:600;">Sign Out</button>
+          <button id="logout-btn" style="width:100%;padding:10px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:8px;cursor:pointer;font-size:12px;color:#ef4444;font-weight:600;transition:all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.15)'" onmouseout="this.style.background='rgba(239,68,68,0.08)'">
+            🔓 Sign Out
+          </button>
         </div>
 
         <!-- Sign in button (shown when not logged in) -->
