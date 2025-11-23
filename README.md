@@ -271,15 +271,29 @@ MIT License - see [LICENSE](LICENSE) for details
 
 **Educational purposes only.** Stockly is not financial advice. All investments carry risk of loss. Past performance does not guarantee future results. Consult qualified financial advisors before making investment decisions.
 
-## Author
+## Authors
 
-**Riad Benyamna**  
-Computer Science @ University of Southern Mississippi  
-Graduating May 2027
-
-📧 [riad.benyamna2020@gmail.com](mailto:riad.benyamna2020@gmail.com)  
-💼 [LinkedIn](https://linkedin.com/in/riad-benyamna)  
-💻 [GitHub](https://github.com/Jinmamak)
+<table>
+<tr>
+<td align="center">
+<img src="https://github.com/Jinmamak.png" width="100px;" alt="Riad Benyamna"/><br />
+<sub><b>Riad Benyamna</b></sub><br />
+Computer Science @ USM<br />
+Graduating May 2027<br />
+<a href="mailto:riad.benyamna2020@gmail.com">📧 Email</a> •
+<a href="https://linkedin.com/in/riad-benyamna">💼 LinkedIn</a> •
+<a href="https://github.com/Jinmamak">💻 GitHub</a>
+</td>
+<td align="center">
+<img src="https://github.com/hossamdarwish.png" width="100px;" alt="Hossam Darwish"/><br />
+<sub><b>Hossam Darwish</b></sub><br />
+<br />
+<br />
+<a href="mailto:Hossam_ElZarw@outlook.com">📧 Email</a> •
+<a href="https://www.linkedin.com/in/hossamdarwish/">💼 LinkedIn</a>
+</td>
+</tr>
+</table>
 
 ---
 
