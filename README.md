@@ -285,12 +285,13 @@ Graduating May 2027<br />
 <a href="https://github.com/Jinmamak">💻 GitHub</a>
 </td>
 <td align="center">
-<img src="https://github.com/hossamdarwish.png" width="100px;" alt="Hossam Darwish"/><br />
+<img src="https://github.com/Hossam-Ismail.png" width="100px;" alt="Hossam Darwish"/><br />
 <sub><b>Hossam Darwish</b></sub><br />
 <br />
 <br />
 <a href="mailto:Hossam_ElZarw@outlook.com">📧 Email</a> •
-<a href="https://www.linkedin.com/in/hossamdarwish/">💼 LinkedIn</a>
+<a href="https://www.linkedin.com/in/hossamdarwish/">💼 LinkedIn</a> •
+<a href="https://github.com/Hossam-Ismail">💻 GitHub</a>
 </td>
 </tr>
 </table>
