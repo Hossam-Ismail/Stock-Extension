@@ -220,7 +220,7 @@ setInterval(() => {
           if (existingBtn) {
             existingBtn.parentElement?.remove();
           }
-          insertAnalyzeButton();
+          // insertAnalyzeButton(); // Moved to widget
         }, 500);
       }
     }
@@ -273,18 +273,20 @@ function injectStocklyWidget() {
     widget.style.border = '1px solid rgba(46, 185, 224, 0.3)';
     widget.style.backdropFilter = 'blur(20px)';
     
+    const logoUrl = chrome.runtime.getURL('Stockly_Logo.png');
+
     widget.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;background:linear-gradient(135deg,#0b4c9a,#1d84c1);border-radius:16px 16px 0 0;">
             <div style="display:flex;align-items:center;gap:10px;">
-                <span style="font-size:20px;">📊</span>
+                <img src="${logoUrl}" alt="Stockly" style="width:28px;height:28px;border-radius:6px;">
                 <div>
-                    <div style="font-size:16px;font-weight:700;color:#fff;">Stockly Analysis</div>
-                    <div style="font-size:11px;color:rgba(255,255,255,0.7);">${currentPlatform.name}</div>
+                    <div style="font-size:16px;font-weight:700;color:#fff;">AI Research Assistant</div>
+                    <div style="font-size:11px;color:rgba(255,255,255,0.7);">Educational Insights</div>
                 </div>
             </div>
             <button id="stockly-close-btn" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#fff;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:all 0.2s;">✕</button>
         </div>
-        <div id="stockly-widget-content" style="padding: 20px; text-align: left; font-size: 14px; line-height: 1.7; color: #e0e0e0; max-height: calc(85vh - 80px); overflow-y: auto;">
+        <div id="stockly-widget-content" style="padding: 20px; text-align: left; font-size: 14px; line-height: 1.7; color: #e0e0e0; max-height: calc(85vh - 80px); overflow: hidden;">
             <div style="text-align:center;padding:40px 20px;">
                 <div style="font-size:48px;margin-bottom:16px;">💹</div>
                 <div style="color:#2eb9e0;font-size:18px;font-weight:600;margin-bottom:8px;">Smart Trading Analysis</div>
@@ -297,9 +299,9 @@ function injectStocklyWidget() {
                         • Key risk factors<br>
                         • Research checklist
                     </div>
-                    <div style="text-align:center;color:#888;font-size:12px;margin-top:16px;">
-                        Click <strong style="color:#667eea;">"Analyze"</strong> next to any stock
-                    </div>
+                    <button id="stockly-analyze-widget-btn" style="width:100%;padding:14px;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);color:white;border:none;border-radius:10px;cursor:pointer;font-size:14px;font-weight:600;margin-top:20px;box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);transition:all 0.2s;">
+                        🎯 Analyze Current Stock
+                    </button>
                 </div>
             </div>
         </div>
@@ -338,7 +340,105 @@ function injectStocklyWidget() {
             showReopenButton();
         }, 300);
     };
-    
+
+    // Analyze button handler in widget
+    const analyzeWidgetBtn = document.getElementById('stockly-analyze-widget-btn');
+    if (analyzeWidgetBtn) {
+        analyzeWidgetBtn.addEventListener('click', async function() {
+            analyzeWidgetBtn.style.pointerEvents = 'none';
+            analyzeWidgetBtn.style.opacity = '0.7';
+
+            const ticker = getStockTicker();
+            if (!ticker) {
+                alert('Could not detect stock ticker');
+                analyzeWidgetBtn.style.pointerEvents = 'auto';
+                analyzeWidgetBtn.style.opacity = '1';
+                return;
+            }
+
+            const contentDiv = widget.querySelector('#stockly-widget-content');
+
+            // Beautiful loading state
+            contentDiv.innerHTML = `
+                <div style="text-align:center;padding:50px 20px;">
+                    <div style="font-size:48px;margin-bottom:16px;animation: bounce 1s infinite;">⚡</div>
+                    <div style="color:#2eb9e0;font-size:18px;font-weight:600;margin-bottom:8px;">Analyzing ${ticker}</div>
+                    <div style="color:#aaa;font-size:13px;">Gathering market data and insights...</div>
+                    <div class="stockly-spinner" style="margin-top:20px;"></div>
+                </div>
+            `;
+
+            try {
+                const isCrypto = currentPlatform.isCrypto ? currentPlatform.isCrypto() : false;
+
+                // Get auth token from Chrome storage
+                const authData = await new Promise((resolve) => {
+                    chrome.storage.sync.get(['stocklyToken', 'stocklyAuthenticated'], (result) => {
+                        resolve(result);
+                    });
+                });
+
+                // Check if user is authenticated
+                if (!authData.stocklyAuthenticated || !authData.stocklyToken) {
+                    contentDiv.innerHTML = `
+                        <div style="text-align:center;padding:40px 20px;">
+                            <div style="font-size:48px;margin-bottom:16px;">🔐</div>
+                            <div style="color:#667eea;font-size:18px;font-weight:600;margin-bottom:8px;">Sign In Required</div>
+                            <div style="color:#aaa;font-size:13px;margin-bottom:20px;">Please sign in to use Stockly analysis</div>
+                            <a href="https://stockly-landing.vercel.app" target="_blank" style="display:inline-block;padding:12px 24px;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);color:white;text-decoration:none;border-radius:8px;font-size:14px;font-weight:600;box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);">
+                                Sign In with Google
+                            </a>
+                        </div>
+                    `;
+                    analyzeWidgetBtn.style.pointerEvents = 'auto';
+                    analyzeWidgetBtn.style.opacity = '1';
+                    return;
+                }
+
+                const res = await fetch('https://stockly-backend-production.up.railway.app/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        ticker,
+                        isCrypto,
+                        token: authData.stocklyToken
+                    })
+                });
+
+                const data = await res.json();
+                console.log('Stockly backend response:', data);
+
+                if (data.result) {
+                    contentDiv.innerHTML = data.result;
+                    contentDiv.scrollTop = 0;
+                } else {
+                    contentDiv.innerHTML = `
+                        <div style="text-align:center;padding:40px 20px;">
+                            <div style="font-size:48px;margin-bottom:16px;">🤔</div>
+                            <div style="color:#f39c12;font-size:18px;font-weight:600;margin-bottom:8px;">Hmm, that's odd</div>
+                            <div style="color:#aaa;font-size:13px;">We couldn't fetch insights right now. Try again?</div>
+                        </div>
+                    `;
+                }
+            } catch (e) {
+                console.error('Error fetching analysis:', e);
+                contentDiv.innerHTML = `
+                    <div style="text-align:center;padding:40px 20px;">
+                        <div style="font-size:48px;margin-bottom:16px;">🔌</div>
+                        <div style="color:#e74c3c;font-size:18px;font-weight:600;margin-bottom:8px;">Connection Lost</div>
+                        <div style="color:#aaa;font-size:13px;margin-bottom:20px;">Unable to connect to the backend server</div>
+                        <button onclick="location.reload()" style="background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);color:white;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);">
+                            Refresh Page
+                        </button>
+                    </div>
+                `;
+            } finally {
+                analyzeWidgetBtn.style.pointerEvents = 'auto';
+                analyzeWidgetBtn.style.opacity = '1';
+            }
+        });
+    }
+
     // Add slide out animation
     if (!document.getElementById('stockly-slideout-anim')) {
         const style = document.createElement('style');
@@ -533,7 +633,7 @@ function insertAnalyzeButton() {
             if (!contentDiv) {
                 contentDiv = document.createElement('div');
                 contentDiv.id = 'stockly-widget-content';
-                contentDiv.style.cssText = 'padding: 20px; text-align: left; font-size: 14px; line-height: 1.8; color: #e0e0e0; max-height: calc(85vh - 80px); overflow-y: auto;';
+                contentDiv.style.cssText = 'padding: 20px; text-align: left; font-size: 14px; line-height: 1.8; color: #e0e0e0; max-height: calc(85vh - 80px); overflow: hidden;';
                 widget.appendChild(contentDiv);
             }
             
@@ -699,7 +799,7 @@ function startStockly() {
     }
     
     // Try to insert button
-    insertAnalyzeButton();
+    // insertAnalyzeButton(); // Moved to widget
     
     // Set up retry mechanism (only if button doesn't exist yet)
     if (!document.getElementById('analyze-btn-ext')) {
@@ -714,7 +814,7 @@ function startStockly() {
                 return;
             }
             console.log(`🔄 Retry ${retryCount + 1} - Looking for title element...`);
-            insertAnalyzeButton();
+            // insertAnalyzeButton(); // Moved to widget
             retryCount++;
         }, 500);
     }
@@ -728,7 +828,7 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
         if (request.action === 'enable') {
             extensionEnabled = true;
             injectStocklyWidget();
-            insertAnalyzeButton();
+            // insertAnalyzeButton(); // Moved to widget
             sendResponse({ status: 'enabled' });
         } 
         else if (request.action === 'disable') {
@@ -743,7 +843,7 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
 
 const observer = new MutationObserver(() => {
     if (extensionEnabled && !document.getElementById('analyze-btn-ext')) {
-        insertAnalyzeButton();
+        // insertAnalyzeButton(); // Moved to widget
     }
 });
 
