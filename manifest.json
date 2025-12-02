@@ -13,8 +13,13 @@
   },
   "permissions": [
     "storage",
-    "activeTab"
+    "activeTab",
+    "notifications",
+    "alarms"
   ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "content_scripts": [
     {
       "matches": ["*://robinhood.com/*", "*://*.robinhood.com/*"],
@@ -31,5 +36,11 @@
     "16": "Stockly_Logo.png",
     "48": "Stockly_Logo.png",
     "128": "Stockly_Logo.png"
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["Stockly_Logo.png"],
+      "matches": ["*://*/*"]
+    }
+  ]
 }
