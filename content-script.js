@@ -286,7 +286,7 @@ function injectStocklyWidget() {
             </div>
             <button id="stockly-close-btn" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#fff;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:all 0.2s;">✕</button>
         </div>
-        <div id="stockly-widget-content" style="padding: 20px; text-align: left; font-size: 14px; line-height: 1.7; color: #e0e0e0; max-height: calc(85vh - 80px); overflow: hidden;">
+        <div id="stockly-widget-content" style="padding: 20px; text-align: left; font-size: 14px; line-height: 1.7; color: #e0e0e0; max-height: calc(85vh - 80px); overflow-y: auto;">
             <div style="text-align:center;padding:40px 20px;">
                 <div style="font-size:48px;margin-bottom:16px;">💹</div>
                 <div style="color:#2eb9e0;font-size:18px;font-weight:600;margin-bottom:8px;">Smart Trading Analysis</div>
@@ -633,7 +633,7 @@ function insertAnalyzeButton() {
             if (!contentDiv) {
                 contentDiv = document.createElement('div');
                 contentDiv.id = 'stockly-widget-content';
-                contentDiv.style.cssText = 'padding: 20px; text-align: left; font-size: 14px; line-height: 1.8; color: #e0e0e0; max-height: calc(85vh - 80px); overflow: hidden;';
+                contentDiv.style.cssText = 'padding: 20px; text-align: left; font-size: 14px; line-height: 1.8; color: #e0e0e0; max-height: calc(85vh - 80px); overflow-y: auto;';
                 widget.appendChild(contentDiv);
             }
             
